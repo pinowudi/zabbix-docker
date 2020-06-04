@@ -1,0 +1,2 @@
+FROM zabbix-server-mysql:ubuntu-local
+RUN apt-get udpate && apt-get install -y python3 bind9-host
