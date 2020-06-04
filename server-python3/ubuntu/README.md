@@ -2,7 +2,7 @@
 
 and
 
-![logo](ihttps://www.python.org/static/community_logos/python-logo.png)
+![logo](https://www.python.org/static/community_logos/python-logo.png)
 
 # Add Python3 to Zabbix server 
 
