@@ -11,6 +11,7 @@ services:
    - "10051:10051"
   volumes:
    - /etc/localtime:/etc/localtime:ro
+   - /etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
    - /etc/timezone:/etc/timezone:ro 
    - ./zbx_env/usr/lib/zabbix/alertscripts:/usr/lib/zabbix/alertscripts:ro
    - ./zbx_env/usr/lib/zabbix/externalscripts:/usr/lib/zabbix/externalscripts:ro
