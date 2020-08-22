@@ -1,15 +1,13 @@
-FROM ubuntu:bionic
+FROM ubuntu:focal
 
-LABEL org.opencontainers.image.title="Zabbix proxy (MySQL)" \
+LABEL org.opencontainers.image.title="Zabbix proxy (SQLite3)" \
       org.opencontainers.image.authors="Alexey Pustovalov <alexey.pustovalov@zabbix.com>" \
       org.opencontainers.image.vendor="Zabbix LLC" \
       org.opencontainers.image.url="https://zabbix.com/" \
-      org.opencontainers.image.description="Zabbix proxy with MySQL database support" \
+      org.opencontainers.image.description="Zabbix proxy with SQLite3 database support" \
       org.opencontainers.image.licenses="GPL v2.0"
 
 STOPSIGNAL SIGTERM
-
-ENV TINI_VERSION=v0.19.0
 
 RUN set -eux && \
     echo "#!/bin/sh\nexit 0" > /usr/sbin/policy-rc.d && \
@@ -32,39 +30,28 @@ RUN set -eux && \
     mkdir -p /var/lib/zabbix/ssl/keys && \
     mkdir -p /var/lib/zabbix/ssl/ssl_ca && \
     mkdir -p /usr/lib/zabbix/externalscripts && \
-    mkdir -p /usr/share/doc/zabbix-proxy-mysql && \
     apt-get -y update && \
     DEBIAN_FRONTEND=noninteractive apt-get -y --no-install-recommends install \
-            curl \
+            tini \
             ca-certificates \
-            gpg \
-            dirmngr \
-            gpg-agent \
             fping \
             libcurl4 \
             libevent-2.1 \
             libopenipmi0 \
             libpcre3 \
-            libsnmp30 \
+            libsnmp35 \
             libsqlite3-0 \
-            libssh2-1 \
+            libssh-4 \
             libssl1.1 \
             libxml2 \
             snmp-mibs-downloader \
             unixodbc && \
-    curl -L https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini -o /sbin/tini && \
-    curl -L https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini.asc -o /tini.asc && \
-    gpg --batch --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 595E85A6B1B4779EA4DAAEC70B588DFF0527A9B7 && \
-    gpg --batch --verify /tini.asc /sbin/tini && \
-    rm -rf /root/.gnupg && \
-    chmod +x /sbin/tini && \
-    apt-get -y purge curl gpg dirmngr gpg-agent && \
     apt-get -y autoremove && \
     apt-get -y clean && \
     rm -rf /var/lib/apt/lists/*
 
 ARG MAJOR_VERSION=5.0
-ARG ZBX_VERSION=${MAJOR_VERSION}.1
+ARG ZBX_VERSION=${MAJOR_VERSION}.2
 ARG ZBX_SOURCES=https://git.zabbix.com/scm/zbx/zabbix.git
 
 ENV TERM=xterm MIBDIRS=/var/lib/snmp/mibs/ietf:/var/lib/snmp/mibs/iana:/usr/share/snmp/mibs:/var/lib/zabbix/mibs MIBS=+ALL \
@@ -88,7 +75,7 @@ RUN set -eux && \
             libpcre3-dev \
             libsnmp-dev \
             libsqlite3-dev \
-            libssh2-1-dev \
+            libssh-dev \
             libxml2-dev \
             make \
             pkg-config \
@@ -115,7 +102,7 @@ RUN set -eux && \
             --with-net-snmp \
             --with-openipmi \
             --with-openssl \
-            --with-ssh2 \
+            --with-ssh \
             --with-unixodbc \
             --enable-ipv6 \
             --silent && \
@@ -142,26 +129,24 @@ RUN set -eux && \
             libpcre3-dev \
             libsnmp-dev \
             libsqlite3-dev \
-            libssh2-1-dev \
+            libssh-dev \
             libxml2-dev \
             make \
             pkg-config \
             git \
             unixodbc-dev && \
     apt-get -y autoremove && \
-    rm -rf /var/lib/apt/lists/* && \
-    chmod +x /sbin/tini
+    rm -rf /var/lib/apt/lists/*
 
 EXPOSE 10051/TCP
             
 WORKDIR /var/lib/zabbix
             
-VOLUME ["/usr/lib/zabbix/externalscripts", "/var/lib/zabbix/enc", "/var/lib/zabbix/modules", "/var/lib/zabbix/snmptraps"]
-VOLUME ["/var/lib/zabbix/ssh_keys", "/var/lib/zabbix/ssl/certs", "/var/lib/zabbix/ssl/keys", "/var/lib/zabbix/ssl/ssl_ca"]
+VOLUME ["/var/lib/zabbix/snmptraps"]
             
 COPY ["docker-entrypoint.sh", "/usr/bin/"]
             
-ENTRYPOINT ["/sbin/tini", "--", "/usr/bin/docker-entrypoint.sh"]
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/bin/docker-entrypoint.sh"]
             
 USER 1997
     

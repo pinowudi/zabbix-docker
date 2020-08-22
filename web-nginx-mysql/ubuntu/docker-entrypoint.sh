@@ -20,9 +20,6 @@ ZBX_SERVER_PORT=${ZBX_SERVER_PORT:-"10051"}
 # Default timezone for web interface
 PHP_TZ=${PHP_TZ:-"Europe/Riga"}
 
-#Enable PostgreSQL timescaleDB feature:
-ENABLE_TIMESCALEDB=${ENABLE_TIMESCALEDB:-"false"}
-
 # Default directories
 # User 'zabbix' home directory
 ZABBIX_USER_HOME_DIR="/var/lib/zabbix"
@@ -167,7 +164,7 @@ check_variables() {
     [ -n "${MYSQL_USER}" ] && CREATE_ZBX_DB_USER=true
 
     # If root password is not specified use provided credentials
-    : ${DB_SERVER_ROOT_USER:=${MYSQL_USER}}....
+    : ${DB_SERVER_ROOT_USER:=${MYSQL_USER}}
     [ "${MYSQL_ALLOW_EMPTY_PASSWORD}" == "true" ] || DB_SERVER_ROOT_PASS=${DB_SERVER_ROOT_PASS:-${MYSQL_PASSWORD}}
     DB_SERVER_ZBX_USER=${MYSQL_USER:-"zabbix"}
     DB_SERVER_ZBX_PASS=${MYSQL_PASSWORD:-"zabbix"}
@@ -231,7 +228,7 @@ prepare_zbx_web_config() {
     ZBX_WWW_ROOT="/usr/share/zabbix"
     ZBX_WEB_CONFIG="$ZABBIX_ETC_DIR/web/zabbix.conf.php"
 
-    PHP_CONFIG_FILE="/etc/php/7.2/fpm/pool.d/zabbix.conf"
+    PHP_CONFIG_FILE="/etc/php/7.4/fpm/pool.d/zabbix.conf"
 
     update_config_var "$PHP_CONFIG_FILE" "php_value[max_execution_time]" "${ZBX_MAXEXECUTIONTIME:-"600"}"
     update_config_var "$PHP_CONFIG_FILE" "php_value[memory_limit]" "${ZBX_MEMORYLIMIT:-"128M"}"
@@ -272,6 +269,7 @@ prepare_zbx_web_config() {
         -e "s/{ZBX_DB_CA_FILE}/${ZBX_DB_CA_FILE}/g" \
         -e "s/{ZBX_DB_VERIFY_HOST}/${ZBX_DB_VERIFY_HOST:-"false"}/g" \
         -e "s/{ZBX_DB_CIPHER_LIST}/${ZBX_DB_CIPHER_LIST}/g" \
+        -e "s/{DB_DOUBLE_IEEE754}/${DB_DOUBLE_IEEE754:-"true"}/g" \
         -e "s/{ZBX_HISTORYSTORAGEURL}/$history_storage_url/g" \
         -e "s/{ZBX_HISTORYSTORAGETYPES}/$history_storage_types/g" \
     "$ZBX_WEB_CONFIG"
@@ -280,6 +278,18 @@ prepare_zbx_web_config() {
         cp "$ZBX_WWW_ROOT/include/defines.inc.php" "/tmp/defines.inc.php_tmp"
         sed "/ZBX_SESSION_NAME/s/'[^']*'/'${ZBX_SESSION_NAME}'/2" "/tmp/defines.inc.php_tmp" > "$ZBX_WWW_ROOT/include/defines.inc.php"
         rm -f "/tmp/defines.inc.php_tmp"
+    fi
+
+    if [ "${ENABLE_WEB_ACCESS_LOG:-"true"}" == "false" ]; then
+        sed -ri \
+            -e 's!^(\s*access_log).+\;!\1 off\;!g' \
+            "/etc/nginx/nginx.conf"
+        sed -ri \
+            -e 's!^(\s*access_log).+\;!\1 off\;!g' \
+            "/etc/zabbix/nginx.conf"
+        sed -ri \
+            -e 's!^(\s*access_log).+\;!\1 off\;!g' \
+            "/etc/zabbix/nginx_ssl.conf"
     fi
 }
 
