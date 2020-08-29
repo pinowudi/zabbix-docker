@@ -2,10 +2,11 @@ version: '3.5'
 services:
  zabbix-server:
   build: 
-   context: ./server-python3/ubuntu
+   context: ./server-python3/ubuntu-pgsql
    cache_from:
-    - ubuntu:bionic
-  image: zabbix-server-mysql:ubuntu-local
+    - ubuntu:focal
+  image: zabbix-server-pgsql:ubuntu-local
+  #image: zabbix-server-mysql:ubuntu-local
   #image: zabbix/zabbix-server-mysql:ubuntu-5.0-latest
   ports:
    - "10051:10051"
@@ -21,7 +22,7 @@ services:
    - ./zbx_env/var/lib/zabbix/mibs:/var/lib/zabbix/mibs:ro
    - snmptraps:/var/lib/zabbix/snmptraps:rw
   links:
-   - mysql-server:mysql-server
+   - postgres-server:postgres-server
    - zabbix-java-gateway:zabbix-java-gateway
   ulimits:
    nproc: 65535
@@ -37,26 +38,22 @@ services:
       cpus: '0.5'
       memory: 512M
   env_file:
-   - .env_db_mysql
+   - .env_db_pgsql
    - .env_srv
   secrets:
-   - MYSQL_USER
-   - MYSQL_PASSWORD
-   - MYSQL_ROOT_PASSWORD
-#   - client-key.pem
-#   - client-cert.pem
-#   - root-ca.pem
+    - POSTGRES_USER
+    - POSTGRES_PASSWORD
   depends_on:
-   - mysql-server
+   - postgres-server
    - zabbix-java-gateway
    - zabbix-snmptraps
   networks:
    zbx_net_backend:
      aliases:
       - zabbix-server
-      - zabbix-server-mysql
-      - zabbix-server-ubuntu-mysql
-      - zabbix-server-mysql-ubuntu
+      - zabbix-server-pgsql
+      - zabbix-server-ubuntu-pgsql
+      - zabbix-server-pgsql-ubuntu
    zbx_net_frontend:
 #  devices:
 #   - "/dev/ttyUSB0:/dev/ttyUSB0"
@@ -67,20 +64,20 @@ services:
    - net.ipv4.conf.all.secure_redirects=0
    - net.ipv4.conf.all.send_redirects=0
   labels:
-   com.zabbix.description: "Zabbix server with MySQL database support"
+   com.zabbix.description: "Zabbix server with PostgresSQL database support"
    com.zabbix.company: "Zabbix LLC"
    com.zabbix.component: "zabbix-server"
-   com.zabbix.dbtype: "mysql"
+   com.zabbix.dbtype: "pgsql"
    com.zabbix.os: "ubuntu"
 
 
- zabbix-web-nginx-mysql:
-  image: zabbix/zabbix-web-nginx-mysql:alpine-5.0-latest
+ zabbix-web-nginx-pgsql:
+  image: zabbix/zabbix-web-nginx-pgsql:alpine-5.0-latest
   ports:
    - "80:8080"
    - "443:8443"
   links:
-   - mysql-server:mysql-server
+   - postgres-server:postgres-server
    - zabbix-server:zabbix-server
   volumes:
    - /etc/localtime:/etc/localtime:ro
@@ -95,16 +92,13 @@ services:
       cpus: '0.5'
       memory: 256M
   env_file:
-   - .env_db_mysql
+   - .env_db_pgsql
    - .env_web
   secrets:
-   - MYSQL_USER
-   - MYSQL_PASSWORD
-#   - client-key.pem
-#   - client-cert.pem
-#   - root-ca.pem
+   - POSTGRES_USER
+   - POSTGRES_PASSWORD
   depends_on:
-   - mysql-server
+   - postgres-server
    - zabbix-server
   healthcheck:
    test: ["CMD", "curl", "-f", "http://localhost:8080/"]
@@ -115,19 +109,19 @@ services:
   networks:
    zbx_net_backend:
     aliases:
-     - zabbix-web-nginx-mysql
-     - zabbix-web-nginx-alpine-mysql
-     - zabbix-web-nginx-mysql-alpine
+     - zabbix-web-nginx-pgsql
+     - zabbix-web-nginx-alpine-pgsql
+     - zabbix-web-nginx-pgsql-alpine
    zbx_net_frontend:
   stop_grace_period: 10s
   sysctls:
    - net.core.somaxconn=65535
   labels:
-   com.zabbix.description: "Zabbix frontend on Nginx web-server with MySQL database support"
+   com.zabbix.description: "Zabbix frontend on Nginx web-server with PostgreSQL database support"
    com.zabbix.company: "Zabbix LLC"
    com.zabbix.component: "zabbix-frontend"
    com.zabbix.webserver: "nginx"
-   com.zabbix.dbtype: "mysql"
+   com.zabbix.dbtype: "pgsql"
    com.zabbix.os: "alpine"
 
  zabbix-agent:
@@ -220,40 +214,31 @@ services:
    com.zabbix.component: "snmptraps"
    com.zabbix.os: "alpine"
 
- mysql-server:
-  image: mysql:8.0
-  command:
-   - mysqld
-   - --character-set-server=utf8
-   - --collation-server=utf8_bin
-   - --default-authentication-plugin=mysql_native_password
-#   - --require-secure-transport
-#   - --ssl-ca=/run/secrets/root-ca.pem
-#   - --ssl-cert=/run/secrets/server-cert.pem
-#   - --ssl-key=/run/secrets/server-key.pem
+ postgres-server:
+  image: postgres:latest
+#  command: -c ssl=on -c ssl_cert_file=/run/secrets/server-cert.pem -c ssl_key_file=/run/secrets/server-key.pem -c ssl_ca_file=/run/secrets/root-ca.pem
   volumes:
-   - ./zbx_env/var/lib/mysql:/var/lib/mysql:rw
+   - ./zbx_env/var/lib/postgresql/data:/var/lib/postgresql/data:rw
+   - ./.ZBX_DB_CA_FILE:/run/secrets/root-ca.pem:ro
+   - ./.ZBX_DB_CERT_FILE:/run/secrets/server-cert.pem:ro
+   - ./.ZBX_DB_KEY_FILE:/run/secrets/server-key.pem:ro
   env_file:
-   - .env_db_mysql
+   - .env_db_pgsql
   secrets:
-   - MYSQL_USER
-   - MYSQL_PASSWORD
-   - MYSQL_ROOT_PASSWORD
-#   - server-key.pem
-#   - server-cert.pem
-#   - root-ca.pem
+   - POSTGRES_USER
+   - POSTGRES_PASSWORD
   stop_grace_period: 1m
   networks:
    zbx_net_backend:
     aliases:
-     - mysql-server
-     - zabbix-database
-     - mysql-database
+     - postgres-server
+     - pgsql-server
+     - pgsql-database
 
- db_data_mysql:
+ db_data_pgsql:
   image: busybox
   volumes:
-   - ./zbx_env/var/lib/mysql:/var/lib/mysql:rw
+   - ./zbx_env/var/lib/postgresql/data:/var/lib/postgresql/data:rw
 
 # elasticsearch:
 #  image: elasticsearch
@@ -304,3 +289,7 @@ secrets:
 #    file: ./.DB_CERT_FILE
 #  server-key.pem:
 #    file: ./.DB_KEY_FILE
+  POSTGRES_USER:
+    file: ./.POSTGRES_USER
+  POSTGRES_PASSWORD:
+    file: ./.POSTGRES_PASSWORD
