@@ -1,18 +1,15 @@
 version: '3.5'
 services:
  zabbix-server:
-  build: 
-   context: ./server-python3/ubuntu-pgsql
+  build:
+   context: ./server-pgsql/ubuntu
    cache_from:
-    - ubuntu:focal
+    - ubuntu:bionic
   image: zabbix-server-pgsql:ubuntu-local
-  #image: zabbix-server-mysql:ubuntu-local
-  #image: zabbix/zabbix-server-mysql:ubuntu-5.0-latest
   ports:
    - "10051:10051"
   volumes:
    - /etc/localtime:/etc/localtime:ro
-   - /etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
    - ./zbx_env/usr/lib/zabbix/alertscripts:/usr/lib/zabbix/alertscripts:ro
    - ./zbx_env/usr/lib/zabbix/externalscripts:/usr/lib/zabbix/externalscripts:ro
    - ./zbx_env/var/lib/zabbix/export:/var/lib/zabbix/export:rw
@@ -20,7 +17,10 @@ services:
    - ./zbx_env/var/lib/zabbix/enc:/var/lib/zabbix/enc:ro
    - ./zbx_env/var/lib/zabbix/ssh_keys:/var/lib/zabbix/ssh_keys:ro
    - ./zbx_env/var/lib/zabbix/mibs:/var/lib/zabbix/mibs:ro
-   - snmptraps:/var/lib/zabbix/snmptraps:rw
+   - ./zbx_env/var/lib/zabbix/snmptraps:/var/lib/zabbix/snmptraps:ro
+#   - ./.ZBX_DB_CA_FILE:/run/secrets/root-ca.pem:ro
+#   - ./.ZBX_DB_CERT_FILE:/run/secrets/client-cert.pem:ro
+#   - ./.ZBX_DB_KEY_FILE:/run/secrets/client-key.pem:ro
   links:
    - postgres-server:postgres-server
    - zabbix-java-gateway:zabbix-java-gateway
@@ -41,8 +41,8 @@ services:
    - .env_db_pgsql
    - .env_srv
   secrets:
-    - POSTGRES_USER
-    - POSTGRES_PASSWORD
+   - POSTGRES_USER
+   - POSTGRES_PASSWORD
   depends_on:
    - postgres-server
    - zabbix-java-gateway
@@ -64,18 +64,21 @@ services:
    - net.ipv4.conf.all.secure_redirects=0
    - net.ipv4.conf.all.send_redirects=0
   labels:
-   com.zabbix.description: "Zabbix server with PostgresSQL database support"
+   com.zabbix.description: "Zabbix server with PostgreSQL database support"
    com.zabbix.company: "Zabbix LLC"
    com.zabbix.component: "zabbix-server"
    com.zabbix.dbtype: "pgsql"
    com.zabbix.os: "ubuntu"
 
-
  zabbix-web-nginx-pgsql:
-  image: zabbix/zabbix-web-nginx-pgsql:ubuntu-5.0-latest
+  build:
+   context: ./web-nginx-pgsql/ubuntu
+   cache_from:
+    - ubuntu:bionic
+  image: zabbix-web-nginx-pgsql:ubuntu-local
   ports:
-   - "80:8080"
-   - "443:8443"
+   - "8081:8080"
+   - "8443:8443"
   links:
    - postgres-server:postgres-server
    - zabbix-server:zabbix-server
@@ -83,6 +86,9 @@ services:
    - /etc/localtime:/etc/localtime:ro
    - ./zbx_env/etc/ssl/nginx:/etc/ssl/nginx:ro
    - ./zbx_env/usr/share/zabbix/modules/:/usr/share/zabbix/modules/:ro
+#   - ./.ZBX_DB_CA_FILE:/run/secrets/root-ca.pem:ro
+#   - ./.ZBX_DB_CERT_FILE:/run/secrets/client-cert.pem:ro
+#   - ./.ZBX_DB_KEY_FILE:/run/secrets/client-key.pem:ro
   deploy:
    resources:
     limits:
@@ -125,7 +131,11 @@ services:
    com.zabbix.os: "ubuntu"
 
  zabbix-agent:
-  image: zabbix/zabbix-agent:ubuntu-5.0-latest
+  build:
+   context: ./agent/ubuntu
+   cache_from:
+    - ubuntu:bionic
+  image: zabbix-agent:ubuntu-local
   ports:
    - "10050:10050"
   volumes:
@@ -163,7 +173,11 @@ services:
    com.zabbix.os: "ubuntu"
 
  zabbix-java-gateway:
-  image: zabbix/zabbix-java-gateway:ubuntu-5.0-latest
+  build:
+   context: ./java-gateway/ubuntu
+   cache_from:
+    - ubuntu:bionic
+  image: zabbix-java-gateway:ubuntu-local
   ports:
    - "10052:10052"
   deploy:
@@ -189,7 +203,11 @@ services:
    com.zabbix.os: "ubuntu"
 
  zabbix-snmptraps:
-  image: zabbix/zabbix-snmptraps:ubuntu-5.0-latest
+  build:
+   context: ./snmptraps/ubuntu
+   cache_from:
+    - ubuntu:bionic
+  image: zabbix-snmptraps:ubuntu-local
   ports:
    - "162:1162/udp"
   volumes:
@@ -279,16 +297,6 @@ secrets:
     file: ./.MYSQL_PASSWORD
   MYSQL_ROOT_PASSWORD:
     file: ./.MYSQL_ROOT_PASSWORD
-#  client-key.pem:
-#    file: ./.ZBX_DB_KEY_FILE
-#  client-cert.pem:
-#    file: ./.ZBX_DB_CERT_FILE
-#  root-ca.pem:
-#    file: ./.ZBX_DB_CA_FILE
-#  server-cert.pem:
-#    file: ./.DB_CERT_FILE
-#  server-key.pem:
-#    file: ./.DB_KEY_FILE
   POSTGRES_USER:
     file: ./.POSTGRES_USER
   POSTGRES_PASSWORD:
