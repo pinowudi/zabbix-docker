@@ -2,9 +2,9 @@ version: '3.5'
 services:
  zabbix-server:
   build:
-   context: ./server-pgsql/ubuntu
+   context: ./server-python3/ubuntu-pgsql
    cache_from:
-    - ubuntu:bionic
+    - ubuntu:focal
   image: zabbix-server-pgsql:ubuntu-local
   ports:
    - "10051:10051"
@@ -72,10 +72,10 @@ services:
 
  zabbix-web-nginx-pgsql:
   build:
-   context: ./web-nginx-pgsql/ubuntu
+   context: ./web-nginx-pgsql/alpine
    cache_from:
-    - ubuntu:bionic
-  image: zabbix-web-nginx-pgsql:ubuntu-local
+    - alpine:3.12
+  image: zabbix-web-nginx-pgsql:alpine-local
   ports:
    - "80:8080"
    - "443:8443"
@@ -116,8 +116,8 @@ services:
    zbx_net_backend:
     aliases:
      - zabbix-web-nginx-pgsql
-     - zabbix-web-nginx-ubuntu-pgsql
-     - zabbix-web-nginx-pgsql-ubuntu
+     - zabbix-web-nginx-alpine-pgsql
+     - zabbix-web-nginx-pgsql-alpine
    zbx_net_frontend:
   stop_grace_period: 10s
   sysctls:
@@ -128,14 +128,14 @@ services:
    com.zabbix.component: "zabbix-frontend"
    com.zabbix.webserver: "nginx"
    com.zabbix.dbtype: "pgsql"
-   com.zabbix.os: "ubuntu"
+   com.zabbix.os: "alpine"
 
  zabbix-agent:
   build:
-   context: ./agent/ubuntu
+   context: ./agent/alpine
    cache_from:
-    - ubuntu:bionic
-  image: zabbix-agent:ubuntu-local
+    - alpine:3.12
+  image: zabbix-agent:alpine-local
   ports:
    - "10050:10050"
   volumes:
@@ -164,20 +164,20 @@ services:
     aliases:
      - zabbix-agent
      - zabbix-agent-passive
-     - zabbix-agent-ubuntu
+     - zabbix-agent-alpine
   stop_grace_period: 5s
   labels:
    com.zabbix.description: "Zabbix agent"
    com.zabbix.company: "Zabbix LLC"
    com.zabbix.component: "zabbix-agentd"
-   com.zabbix.os: "ubuntu"
+   com.zabbix.os: "alpine"
 
  zabbix-java-gateway:
   build:
-   context: ./java-gateway/ubuntu
+   context: ./java-gateway/alpine
    cache_from:
-    - ubuntu:bionic
-  image: zabbix-java-gateway:ubuntu-local
+    - alpine:3.12
+  image: zabbix-java-gateway:alpine-local
   ports:
    - "10052:10052"
   deploy:
@@ -194,20 +194,20 @@ services:
    zbx_net_backend:
     aliases:
      - zabbix-java-gateway
-     - zabbix-java-gateway-ubuntu
+     - zabbix-java-gateway-alpine
   stop_grace_period: 5s
   labels:
    com.zabbix.description: "Zabbix Java Gateway"
    com.zabbix.company: "Zabbix LLC"
    com.zabbix.component: "java-gateway"
-   com.zabbix.os: "ubuntu"
+   com.zabbix.os: "alpine"
 
  zabbix-snmptraps:
   build:
-   context: ./snmptraps/ubuntu
+   context: ./snmptraps/alpine
    cache_from:
-    - ubuntu:bionic
-  image: zabbix-snmptraps:ubuntu-local
+    - alpine:3.12
+  image: zabbix-snmptraps:alpine-local
   ports:
    - "162:1162/udp"
   volumes:
@@ -230,7 +230,7 @@ services:
    com.zabbix.description: "Zabbix snmptraps"
    com.zabbix.company: "Zabbix LLC"
    com.zabbix.component: "snmptraps"
-   com.zabbix.os: "ubuntu"
+   com.zabbix.os: "alpine"
 
  postgres-server:
   image: postgres:latest

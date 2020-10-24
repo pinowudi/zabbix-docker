@@ -42,6 +42,7 @@ RUN set -eux && \
     echo "deb https://nginx.org/packages/ubuntu/ $DISTRIB_CODENAME nginx" >> /etc/apt/sources.list.d/nginx.list && \
     apt-get -y update && \
     DEBIAN_FRONTEND=noninteractive apt-get -y --no-install-recommends install \
+            libaio \
             curl \
             nginx \
             locales \
